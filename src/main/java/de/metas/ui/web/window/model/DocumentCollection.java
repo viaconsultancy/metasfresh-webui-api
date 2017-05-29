@@ -257,6 +257,28 @@ public class DocumentCollection
 		return document;
 	}
 
+	public Document createRootDocumentAsCopyFromAndCommit(final DocumentPath fromRootDocumentPath)
+	{
+		if (!fromRootDocumentPath.isRootDocument())
+		{
+			throw new InvalidDocumentPathException(fromRootDocumentPath, "root document path was expected");
+		}
+		if (fromRootDocumentPath.isNewDocument())
+		{
+			throw new InvalidDocumentPathException(fromRootDocumentPath, "existing document path was expected");
+		}
+
+		final WindowId windowId = fromRootDocumentPath.getWindowId();
+		final DocumentEntityDescriptor entityDescriptor = getDocumentEntityDescriptor(windowId);
+		assertNewDocumentAllowed(entityDescriptor);
+
+		final DocumentsRepository documentsRepository = entityDescriptor.getDataBinding().getDocumentsRepository();
+		final DocumentId fromDocumentId = fromRootDocumentPath.getDocumentId();
+		final Document newDocument = documentsRepository.createNewDocumentAsCopyFrom(entityDescriptor, fromDocumentId);
+		commitRootDocument(newDocument);
+		return newDocument.copy(CopyMode.CheckInReadonly, NullDocumentChangesCollector.instance);
+	}
+
 	private void assertNewDocumentAllowed(final DocumentEntityDescriptor entityDescriptor)
 	{
 		final ILogicExpression allowExpr = entityDescriptor.getAllowCreateNewLogic();

@@ -8,6 +8,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.adempiere.ad.persistence.IModelInternalAccessor;
+import org.adempiere.ad.security.TableAccessLevel;
 import org.adempiere.ad.wrapper.IInterfaceWrapper;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.model.InterfaceWrapperHelper;
@@ -389,6 +390,13 @@ public class DocumentInterfaceWrapper implements InvocationHandler, IInterfaceWr
 	}
 
 	@Override
+	public TableAccessLevel getAccessLevel()
+	{
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public final Object getValue(final String columnName, final Class<?> returnType)
 	{
 		final IDocumentFieldView field = getDocument().getFieldView(columnName);
@@ -541,7 +549,7 @@ public class DocumentInterfaceWrapper implements InvocationHandler, IInterfaceWr
 	{
 		return document;
 	}
-	
+
 	private final Properties getCtx()
 	{
 		return document.getCtx();
@@ -759,6 +767,27 @@ public class DocumentInterfaceWrapper implements InvocationHandler, IInterfaceWr
 	{
 		final IDocumentFieldView field = document.getFieldViewOrNull(columnName);
 		return field != null && field.isCalculated();
+	}
+
+	@Override
+	public String getDefaultValueLogic(final String columnName)
+	{
+		final IDocumentFieldView field = document.getFieldViewOrNull(columnName);
+		if (field == null)
+		{
+			return null;
+		}
+
+		return field.getDescriptor().getDefaultValueExpression()
+				.map(defaultLogicExpr -> defaultLogicExpr.getExpressionString())
+				.orElse(null);
+	}
+
+	@Override
+	public int getDisplayType(final String columnName)
+	{
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

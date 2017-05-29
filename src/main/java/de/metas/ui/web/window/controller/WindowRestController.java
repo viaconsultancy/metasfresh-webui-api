@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,6 +43,7 @@ import de.metas.ui.web.process.json.JSONDocumentActionsList;
 import de.metas.ui.web.session.UserSession;
 import de.metas.ui.web.window.datatypes.DocumentPath;
 import de.metas.ui.web.window.datatypes.WindowId;
+import de.metas.ui.web.window.datatypes.json.JSONCreateDocumentRequest;
 import de.metas.ui.web.window.datatypes.json.JSONDocument;
 import de.metas.ui.web.window.datatypes.json.JSONDocumentChangedEvent;
 import de.metas.ui.web.window.datatypes.json.JSONDocumentLayout;
@@ -247,6 +249,31 @@ public class WindowRestController
 
 			return JSONDocument.ofDocumentsList(documents, jsonOpts);
 		});
+	}
+
+	@PostMapping("/{windowId}")
+	public JSONDocument createNewDocument(@PathVariable("windowId") final String windowIdStr, @RequestBody final JSONCreateDocumentRequest request)
+	{
+		final WindowId windowId = WindowId.fromJson(windowIdStr);
+
+		//
+		// Create new document by copying (including details) from a given template document
+		// The newly created document is already saved in database.
+		if (request.getTemplateDocumentId() != null)
+		{
+			final DocumentPath fromRootDocumentPath = DocumentPath.rootDocumentPath(windowId, request.getTemplateDocumentId());
+			final Document newDocument = documentCollection.createRootDocumentAsCopyFromAndCommit(fromRootDocumentPath);
+			return JSONDocument.ofDocument(newDocument, newJSONOptions().build());
+		}
+		//
+		// Create new document
+		else
+		{
+			final DocumentPath newRootDocumentPath = DocumentPath.newRootDocumentPath(windowId);
+			return documentCollection.forDocumentWritable(newRootDocumentPath, NullDocumentChangesCollector.instance, document -> {
+				return JSONDocument.ofDocument(document, newJSONOptions().build());
+			});
+		}
 	}
 
 	@PatchMapping("/{windowId}/{documentId}")

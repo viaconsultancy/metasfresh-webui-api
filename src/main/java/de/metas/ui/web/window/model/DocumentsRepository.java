@@ -55,6 +55,8 @@ public interface DocumentsRepository
 	 */
 	Document createNewDocument(DocumentEntityDescriptor entityDescriptor, final Document parentDocument, final IDocumentChangesCollector changesCollector);
 
+	Document createNewDocumentAsCopyFrom(DocumentEntityDescriptor entityDescriptor, DocumentId fromDocumentId);
+
 	void refresh(Document document);
 
 	void save(Document document);

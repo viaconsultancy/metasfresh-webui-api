@@ -131,6 +131,12 @@ import de.metas.ui.web.window.model.lookup.LookupValueByIdSupplier;
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
+	public de.metas.ui.web.window.model.Document createNewDocumentAsCopyFrom(final DocumentEntityDescriptor entityDescriptor, final DocumentId fromDocumentId)
+	{
+		throw new UnsupportedOperationException();
+	}
+
 	Document createNewParametersDocument(final DocumentEntityDescriptor parametersDescriptor, final DocumentId adPInstanceId, final IDocumentEvaluatee evalCtx, final IDocumentChangesCollector changesCollector)
 	{
 		final IDocumentEvaluatee evalCtxEffective;

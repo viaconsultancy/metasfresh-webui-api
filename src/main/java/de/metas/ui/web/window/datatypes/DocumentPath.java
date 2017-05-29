@@ -84,7 +84,7 @@ public final class DocumentPath
 
 		return new DocumentPath(documentType, documentTypeId, documentId);
 	}
-
+	
 	public static final List<DocumentPath> rootDocumentPathsList(final WindowId windowId, final String documentIdsListStr)
 	{
 		if (documentIdsListStr == null || documentIdsListStr.isEmpty())
@@ -96,6 +96,11 @@ public final class DocumentPath
 				.stream()
 				.map(documentId -> rootDocumentPath(windowId, documentId))
 				.collect(GuavaCollectors.toImmutableList());
+	}
+	
+	public static final DocumentPath newRootDocumentPath(WindowId windowId)
+	{
+		return new DocumentPath(DocumentType.Window, windowId.toDocumentId(), DocumentId.NEW);
 	}
 
 	public static final DocumentPath includedDocumentPath(@NonNull final WindowId windowId, final String idStr, final String detailId, final String rowIdStr)

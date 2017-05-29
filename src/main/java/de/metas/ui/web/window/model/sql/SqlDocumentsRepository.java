@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -17,12 +18,15 @@ import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.exceptions.DBException;
 import org.adempiere.exceptions.DBMoreThenOneRecordsFoundException;
 import org.adempiere.model.InterfaceWrapperHelper;
+import org.adempiere.model.copyRecord.CopyRecordFactory;
+import org.adempiere.model.copyRecord.CopyRecordSupport;
 import org.adempiere.util.Check;
 import org.adempiere.util.Services;
 import org.compiere.model.PO;
 import org.compiere.model.POInfo;
 import org.compiere.util.DB;
 import org.compiere.util.DisplayType;
+import org.compiere.util.Env;
 import org.compiere.util.TimeUtil;
 import org.slf4j.Logger;
 
@@ -55,7 +59,9 @@ import de.metas.ui.web.window.model.DocumentQuery;
 import de.metas.ui.web.window.model.DocumentsRepository;
 import de.metas.ui.web.window.model.IDocumentChangesCollector;
 import de.metas.ui.web.window.model.IDocumentFieldView;
+import de.metas.ui.web.window.model.NullDocumentChangesCollector;
 import de.metas.ui.web.window.model.OrderedDocumentsList;
+import lombok.NonNull;
 
 /*
  * #%L
@@ -151,7 +157,7 @@ public final class SqlDocumentsRepository implements DocumentsRepository
 		return retriveDocuments(query, limit, changesCollector);
 	}
 
-	public OrderedDocumentsList retriveDocuments(final DocumentQuery query, final int limit, final IDocumentChangesCollector changesCollector)
+	private OrderedDocumentsList retriveDocuments(final DocumentQuery query, final int limit, final IDocumentChangesCollector changesCollector)
 	{
 		logger.debug("Retrieving records: query={}, limit={}", query, limit);
 
@@ -295,6 +301,39 @@ public final class SqlDocumentsRepository implements DocumentsRepository
 				.setParentDocument(parentDocument)
 				.setChangesCollector(changesCollector)
 				.initializeAsNewDocument(documentId, VERSION_DEFAULT);
+	}
+
+	@Override
+	public Document createNewDocumentAsCopyFrom(@NonNull final DocumentEntityDescriptor entityDescriptor, @NonNull final DocumentId fromDocumentId)
+	{
+		assertThisRepository(entityDescriptor);
+		// TODO: check permissions if we can create a new record
+
+		//
+		// Load the source PO
+		final SqlDocumentEntityDataBindingDescriptor dataBinding = SqlDocumentEntityDataBindingDescriptor.cast(entityDescriptor.getDataBinding());
+		final String sqlTableName = dataBinding.getTableName();
+		final boolean checkCache = false;
+		final PO fromPO = TableModelLoader.instance.getPO(Env.getCtx(), sqlTableName, fromDocumentId.toInt(), checkCache, ITrx.TRXNAME_ThreadInherited);
+		if (fromPO == null)
+		{
+			throw new DBException("No PO found for " + fromDocumentId);
+		}
+
+		//
+		// Copy the source PO (and it's children) to "newPO".
+		final CopyRecordSupport copier = CopyRecordFactory.builder()
+				.tableName(sqlTableName)
+				.build().create();
+
+		final PO newPO = copier.copyRoot(fromPO, ITrx.TRXNAME_ThreadInherited)
+				.orElseThrow(() -> new AdempiereException("Copy failed")); // shall not happen
+
+		//
+		// Create the Document from newPO
+		// FIXME: not efficient, we already have the data loaded into newPO. We shall not go back to database again
+		final DocumentId newDocumentId = DocumentId.of(newPO.get_ID());
+		return retrieveDocumentById(entityDescriptor, newDocumentId, NullDocumentChangesCollector.instance);
 	}
 
 	@FunctionalInterface
@@ -535,18 +574,19 @@ public final class SqlDocumentsRepository implements DocumentsRepository
 	{
 		final SqlDocumentEntityDataBindingDescriptor dataBinding = SqlDocumentEntityDataBindingDescriptor.cast(document.getEntityDescriptor().getDataBinding());
 		final String sqlTableName = dataBinding.getTableName();
+		final Properties ctx = Env.getCtx();
 
 		//
 		// Load the PO / Create new PO instance
 		final PO po;
 		if (document.isNew())
 		{
-			po = TableModelLoader.instance.newPO(document.getCtx(), sqlTableName, ITrx.TRXNAME_ThreadInherited);
+			po = TableModelLoader.instance.newPO(ctx, sqlTableName, ITrx.TRXNAME_ThreadInherited);
 		}
 		else
 		{
 			final boolean checkCache = false;
-			po = TableModelLoader.instance.getPO(document.getCtx(), sqlTableName, document.getDocumentIdAsInt(), checkCache, ITrx.TRXNAME_ThreadInherited);
+			po = TableModelLoader.instance.getPO(ctx, sqlTableName, document.getDocumentIdAsInt(), checkCache, ITrx.TRXNAME_ThreadInherited);
 
 			if (po == null)
 			{

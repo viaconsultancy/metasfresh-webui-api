@@ -822,9 +822,13 @@ public final class Document
 		return documentPath.getDetailId();
 	}
 
+	/**
+	 * @deprecated Please use {@link Env#getCtx()} or something else
+	 */
+	@Deprecated
 	public Properties getCtx()
 	{
-		return Env.getCtx(); // FIXME use document level context
+		return Env.getCtx();
 	}
 
 	public int getWindowNo()
